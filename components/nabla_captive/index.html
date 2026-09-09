@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nabla WiFi Setup</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#000;color:#ccc;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:20px 16px}
+.logo{width:32px;height:28px;margin-bottom:12px}
+.logo svg{width:100%;height:100%}
+h1{font-size:1.1rem;font-weight:500;margin-bottom:4px;color:#fff;letter-spacing:.02em}
+.mac{font-size:.7rem;color:#555;margin-bottom:20px;font-family:monospace}
+.card{background:#0a0a0a;border:1px solid #1a1a1a;border-radius:8px;padding:16px;width:100%;max-width:320px}
+.net{padding:10px;border-radius:4px;margin-bottom:6px;cursor:pointer;display:flex;align-items:center;gap:10px;transition:background .1s;border:1px solid transparent}
+.net:hover{background:#111}
+.net.sel{background:#0d1a2d;border-color:#1a5cff}
+.bars{display:flex;gap:2px;align-items:flex-end;height:14px}
+.bar{width:2px;background:#1a5cff;border-radius:1px}
+.bar.a{height:3px}.bar.b{height:6px}.bar.c{height:9px}.bar.d{height:14px}
+.bars.s1 .bar.b,.bars.s1 .bar.c,.bars.s1 .bar.d{background:#222}
+.bars.s2 .bar.c,.bars.s2 .bar.d{background:#222}
+.bars.s3 .bar.d{background:#222}
+.lock{width:12px;height:12px;fill:#444}
+.ssid{flex:1;font-size:.85rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#aaa}
+.net.sel .ssid{color:#fff}
+.form{margin-top:14px;border-top:1px solid #1a1a1a;padding-top:14px}
+label{display:block;font-size:.7rem;color:#666;margin-bottom:3px;text-transform:uppercase;letter-spacing:.05em}
+input{width:100%;padding:8px 10px;border:1px solid #222;border-radius:4px;background:#050505;color:#ddd;font-size:.85rem;margin-bottom:10px}
+input:focus{outline:none;border-color:#1a5cff}
+button{width:100%;padding:10px;border:1px solid #1a5cff;border-radius:4px;background:transparent;color:#1a5cff;font-size:.85rem;font-weight:500;cursor:pointer;transition:all .15s;text-transform:uppercase;letter-spacing:.05em}
+button:hover{background:#1a5cff;color:#000}
+button:disabled{border-color:#333;color:#333;cursor:not-allowed;background:transparent}
+.msg{text-align:center;padding:12px;font-size:.8rem}
+.msg.ok{color:#4ade80}
+.msg.err{color:#f87171}
+.scan{font-size:.75rem;color:#444;text-align:center;margin-top:10px}
+</style>
+</head>
+<body>
+<div class="logo">
+<svg viewBox="0 0 32 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M16 26L2 4H30L16 26Z" stroke="#1a5cff" stroke-width="2" fill="none"/>
+</svg>
+</div>
+<h1 id="name">WiFi Setup</h1>
+<div class="mac" id="mac"></div>
+<div class="card">
+<div id="nets"></div>
+<form class="form" id="form" onsubmit="return save(event)">
+<label for="s">Network</label>
+<input type="text" id="s" name="ssid" required autocomplete="off" placeholder="SSID">
+<label for="p">Password</label>
+<input type="password" id="p" name="psk" autocomplete="off">
+<button type="submit" id="btn">Save</button>
+</form>
+<div id="msg"></div>
+<div class="scan" id="scan">Scanning...</div>
+</div>
+<script>
+var sel='',nets=[];
+function bars(r){var c='bars';if(r>-50)c+=' s4';else if(r>-65)c+=' s3';else if(r>-80)c+=' s2';else c+=' s1';return'<div class="'+c+'"><div class="bar a"></div><div class="bar b"></div><div class="bar c"></div><div class="bar d"></div></div>'}
+function lockIcon(){return'<svg class="lock" viewBox="0 0 24 24"><path fill="currentColor" d="M12 17a2 2 0 002-2 2 2 0 00-2-2 2 2 0 00-2 2 2 2 0 002 2m6-9a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V10a2 2 0 012-2h1V6a5 5 0 0110 0v2h1m-6-5a3 3 0 00-3 3v2h6V6a3 3 0 00-3-3z"/></svg>'}
+function render(){var h='';for(var i=0;i<nets.length;i++){var n=nets[i],c='net';if(n.ssid===sel)c+=' sel';h+='<div class="'+c+'" onclick="pick(\''+n.ssid.replace(/'/g,"\\'")+'\')">'+bars(n.rssi)+(n.lock?lockIcon():'')+'<span class="ssid">'+n.ssid+'</span></div>'}document.getElementById('nets').innerHTML=h}
+function pick(s){sel=s;document.getElementById('s').value=s;render()}
+function load(){fetch('/config.json').then(function(r){return r.json()}).then(function(d){document.getElementById('name').textContent=d.name||'WiFi Setup';document.getElementById('mac').textContent=d.mac||'';nets=d.aps.filter(function(a){return a.ssid});nets.sort(function(a,b){return b.rssi-a.rssi});document.getElementById('scan').style.display='none';render()}).catch(function(){document.getElementById('scan').textContent='Network scan failed'})}
+function save(e){e.preventDefault();var s=document.getElementById('s').value,p=document.getElementById('p').value;if(!s)return false;document.getElementById('btn').disabled=true;document.getElementById('btn').textContent='Saving...';fetch('/wifisave?ssid='+encodeURIComponent(s)+'&psk='+encodeURIComponent(p)).then(function(r){if(r.ok){document.getElementById('msg').className='msg ok';document.getElementById('msg').textContent='Saved. Connecting to '+s+'...'}else throw new Error()}).catch(function(){document.getElementById('msg').className='msg err';document.getElementById('msg').textContent='Failed. Try again.'}).finally(function(){document.getElementById('btn').disabled=false;document.getElementById('btn').textContent='Save'});return false}
+load();
+</script>
+</body>
+</html>
