@@ -1,0 +1,50 @@
+# Example ESPHome configuration using nabla_captive
+# Copy this to your device's YAML file and customize as needed
+
+esphome:
+  name: nabla-device
+  friendly_name: "Nabla Device"
+
+# Choose your platform
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+# Or for ESP8266:
+# esp8266:
+#   board: d1_mini
+
+# External component from GitHub
+external_components:
+  - source: github://txemavs/nabla-esphome-captive@main
+    components: [nabla_captive]
+
+# WiFi configuration
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  
+  # Fallback AP - required for captive portal
+  ap:
+    ssid: "Nabla-Fallback"
+    password: "nablasetup"
+
+# Stock captive portal (handles DNS redirection and AP detection)
+captive_portal:
+
+# Nabla branded portal (serves the custom UI)
+nabla_captive:
+
+# Optional: Enable logging
+logger:
+
+# Optional: Enable OTA updates
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+# Optional: API for Home Assistant (not required for portal)
+api:
+  encryption:
+    key: !secret api_key
