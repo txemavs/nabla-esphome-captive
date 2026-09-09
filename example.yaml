@@ -5,9 +5,9 @@ esphome:
   name: nabla-device
   friendly_name: "Nabla Device"
 
-# Choose your platform
+# ESP32 (e.g. nodemcu-32s)
 esp32:
-  board: esp32dev
+  board: nodemcu-32s
   framework:
     type: arduino
 
@@ -30,10 +30,8 @@ wifi:
     ssid: "Nabla-Fallback"
     password: "nablasetup"
 
-# Stock captive portal (handles DNS redirection and AP detection)
-captive_portal:
-
-# Nabla branded portal (serves the custom UI)
+# Nabla branded captive portal (REPLACES stock captive_portal)
+# Do NOT include captive_portal: when using nabla_captive:
 nabla_captive:
 
 # Optional: Enable logging

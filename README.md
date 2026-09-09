@@ -4,15 +4,15 @@ ESPHome external component: Nabla-branded Wi‑Fi captive portal for nabla-mando
 
 ## Overview
 
-This component provides a custom captive portal with Nabla branding (hollow blue nabla ∇ triangle logo) that replaces the stock ESPHome captive portal appearance while maintaining full compatibility with the WiFi save functionality.
+This component **replaces** the stock ESPHome `captive_portal` with a Nabla-branded dark UI. It provides the same WiFi scan/save functionality with custom styling.
 
 **Key features:**
-- Nabla-branded UI with dark theme and blue (#1a5cff) accents
-- Minimal footprint: **~2.2 KB gzipped** (well under 40 KB target)
+- Nabla-branded UI with Agency dark theme (black background, blue #1a5cff accents)
+- Small nabla ∇ logo at top (hollow blue triangle pointing down)
+- Minimal footprint: **~2.2 KB gzipped**
 - Same WiFi scan/save behavior as stock ESPHome captive portal
-- Works on ESP32, ESP8266, BK72XX, LN882X, RP2040, RTL87XX
+- Works on ESP32, ESP8266, BK72XX, RTL87XX
 - No external dependencies (no Vuetify/Ionic)
-- Self-contained HTML/CSS/JS
 
 ## Installation
 
@@ -26,9 +26,15 @@ external_components:
 
 ## Usage
 
+**Important:** Use `nabla_captive:` instead of (not alongside) the stock `captive_portal:`. They both run DNS servers and HTTP handlers — using both wastes resources and can conflict.
+
 ### Basic Configuration
 
 ```yaml
+external_components:
+  - source: github://txemavs/nabla-esphome-captive@main
+    components: [nabla_captive]
+
 wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
@@ -36,22 +42,22 @@ wifi:
     ssid: "MyDevice-Fallback"
     password: "fallback123"
 
-# Keep stock captive_portal for DNS/AP wiring (recommended)
-captive_portal:
-
-# Add Nabla branded portal
+# Use nabla_captive INSTEAD OF captive_portal
 nabla_captive:
 ```
 
-### Minimal Configuration (AP-only fallback)
+### Minimal Configuration (AP-only setup mode)
 
 ```yaml
+external_components:
+  - source: github://txemavs/nabla-esphome-captive@main
+    components: [nabla_captive]
+
 wifi:
   ap:
     ssid: "Nabla-Setup"
     password: "nablasetup"
 
-captive_portal:
 nabla_captive:
 ```
 
@@ -62,20 +68,25 @@ nabla_captive:
 3. The Nabla-branded portal displays available networks and allows entering credentials
 4. Credentials are saved and the device attempts to connect
 
-## Architecture Choice
-
-This component uses **Approach A: Separate Component** rather than overriding `captive_portal`:
-
-- `nabla_captive` is a standalone component that depends on `wifi` and `web_server_base`
-- You keep the stock `captive_portal:` entry for DNS server and AP detection wiring
-- The `nabla_captive` component serves the branded HTML page
-
-This approach was chosen because:
-1. More reliable with ESPHome updates (no component override conflicts)
-2. Cleaner separation of concerns
-3. Allows future customization without breaking core functionality
-
 ## Important Notes
+
+### Do NOT use both `captive_portal:` and `nabla_captive:`
+
+This component fully replaces the stock captive portal. Using both will:
+- Run two DNS servers on port 53 (conflict)
+- Double the socket usage
+- Cause undefined behavior
+
+**Correct:**
+```yaml
+nabla_captive:
+```
+
+**Wrong:**
+```yaml
+captive_portal:    # Don't include this
+nabla_captive:
+```
 
 ### WiFi Credentials Persistence
 
@@ -90,9 +101,9 @@ To make portal-saved credentials permanent:
 
 ### Compatibility
 
-- **ESPHome version:** 2024.x and 2025.x
-- **Platforms:** ESP32, ESP8266, BK72XX, LN882X, RP2040, RTL87XX
-- **Frameworks:** Arduino and ESP-IDF (ESP32)
+- **ESPHome version:** 2024.6.x and later
+- **Platforms:** ESP32, ESP8266, BK72XX, RTL87XX
+- **Framework:** Arduino
 
 ## File Structure
 
@@ -103,8 +114,6 @@ components/
     ├── nabla_captive.h       # C++ header
     ├── nabla_captive.cpp     # C++ implementation
     ├── nabla_index.h         # Gzipped HTML as PROGMEM array
-    ├── dns_server_esp32_idf.h   # DNS server for ESP-IDF
-    ├── dns_server_esp32_idf.cpp # DNS server implementation
     └── index.html            # Source HTML (for reference)
 ```
 
@@ -121,18 +130,18 @@ To modify the portal appearance:
    with open('index.html.gz', 'rb') as f:
        data = f.read()
    print('#pragma once')
-   print('// Generated from index.html')
    print('#include \"esphome/core/hal.h\"')
-   print('namespace esphome::nabla_captive {')
-   print('constexpr uint8_t NABLA_INDEX_GZ[] PROGMEM = {')
+   print('namespace esphome {')
+   print('namespace nabla_captive {')
+   print('const uint8_t NABLA_INDEX_GZ[] PROGMEM = {')
    for i, b in enumerate(data):
        if i % 16 == 0: print('    ', end='')
        print(f'0x{b:02x}', end='')
        if i < len(data) - 1: print(', ', end='')
        if (i + 1) % 16 == 0 or i == len(data) - 1: print()
    print('};')
-   print(f'// Size: {len(data)} bytes')
-   print('}  // namespace esphome::nabla_captive')
+   print('}  // namespace nabla_captive')
+   print('}  // namespace esphome')
    " > nabla_index.h
    rm index.html.gz
    ```
@@ -141,6 +150,7 @@ To modify the portal appearance:
 
 The component uses the same endpoints as stock ESPHome captive portal:
 
+- `GET /` - Serves the Nabla-branded HTML page
 - `GET /config.json` - Returns device name, MAC, and scanned networks
 - `GET /wifisave?ssid=...&psk=...` - Saves WiFi credentials
 
